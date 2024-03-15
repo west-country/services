@@ -1,0 +1,10 @@
+{
+    "name": "garrincha4/services",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "Garrincha4\\Services\\": "src/"
+        }
+    },
+    "require": {}
+}
