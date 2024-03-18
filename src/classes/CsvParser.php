@@ -21,40 +21,39 @@ class CsvParser
         return $csvArray;
     }
 
-    public function toArray(): array
+    public function toArray(): array | bool
     {
-        $csvArray = $this->readFile('convertCsvToArray');
-        return $csvArray;
+        return $this->readFile('convertCsvToArray');
     }
 
-    public function readFile(string $callbackForReadingFile): mixed
+    public function readFile(string $callbackForReadingFile): array | Exception
     {
-        if (($openFile = fopen($this->fileLocation, "r")) !== false) {
+        if (file_exists($this->fileLocation)) {
+            if (($openFile = fopen($this->fileLocation, "r")) !== false) {
 
-            $parsedData = $this->{$callbackForReadingFile}($openFile);
+                $parsedData = $this->{$callbackForReadingFile}($openFile);
 
-            fclose($openFile);
+                fclose($openFile);
+            }
+            return $parsedData;
+        } else {
+            throw new Exception("Invalid file path\n");
         }
-        return $parsedData;
     }
 
-    public function queryWhereColumnEqualsValue(string $columnName, mixed $value)
+    public function queryWhereColumnEqualsValue(string $columnName, mixed $value): array
     {
         $columnIndex = $this->getColumnIndex($columnName);
-        $value = strtolower($value);
-
+        if (is_string($value)) {
+            $value = strtolower($value);
+        }
         $arrayOfMatches = array_filter($this->fileAsArray, function ($row) use ($columnIndex, $value) {
             $entryInRelevantColumn = $row[$columnIndex];
             if (is_string($entryInRelevantColumn)) {
                 $entryInRelevantColumn = strtolower($entryInRelevantColumn);
             }
-            if ($entryInRelevantColumn === $value) {
-                return true;
-            } else {
-                return false;
-            }
+            return $entryInRelevantColumn === $value;
         });
-
         return $arrayOfMatches;
     }
 
@@ -68,14 +67,12 @@ class CsvParser
         $columnIndex = $this->getColumnIndex($columnName);
         $fileArrayExTitleRow = $this->fileAsArray;
         array_shift($fileArrayExTitleRow);
-        $arrayOfCountryEntries = array_map(
+        $arrayOfColumnEntries = array_map(
             function ($row) use ($columnIndex, $strToLower) {
                 return $strToLower ? strToLower($row[$columnIndex]) : $row[$columnIndex];
             },
             $fileArrayExTitleRow
         );
-        return array_unique($arrayOfCountryEntries);
+        return array_unique($arrayOfColumnEntries);
     }
 }
-
-?>
