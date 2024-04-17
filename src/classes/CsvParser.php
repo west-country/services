@@ -1,78 +1,64 @@
 <?php
 
-class CsvParser
+require_once 'CsvReader.php';
+
+class CsvParser extends CsvReader
 {
-    public string $fileLocation;
-    public array $fileAsArray;
-    public array $columnNames;
+    protected string $fileLocation;
+    protected array $fileAsArray;
 
     public function __construct(string $fileLocation)
     {
         $this->fileLocation = $fileLocation;
-        $this->fileAsArray = $this->toArray();
-        $this->columnNames = $this->fileAsArray[0];
+        $this->fileAsArray = $this->toAssocArray();
     }
 
-    public function convertCsvToArray($fileToRead): array
+    protected function toAssocArray(): array
     {
-        while (($data = fgetcsv($fileToRead, 1000, ",")) !== false) {
-            $csvArray[] = $data;
-        }
-        return $csvArray;
-    }
-
-    public function toArray(): array | bool
-    {
-        return $this->readFile('convertCsvToArray');
-    }
-
-    public function readFile(string $callbackForReadingFile): array | Exception
-    {
-        if (file_exists($this->fileLocation)) {
-            if (($openFile = fopen($this->fileLocation, "r")) !== false) {
-
-                $parsedData = $this->{$callbackForReadingFile}($openFile);
-
-                fclose($openFile);
+        return $this->readFile(
+            function ($fileToRead) {
+                while (($data = fgetcsv($fileToRead, 1000, ",")) !== false) {
+                    $csvArray[] = $data;
+                }
+                $columns = array_shift($csvArray);
+                $csvAssocArray = array_map(
+                    function ($entries) use ($columns) {
+                        return array_combine($columns, $entries);
+                    },
+                    $csvArray
+                );
+                return $csvAssocArray;
             }
-            return $parsedData;
-        } else {
-            throw new Exception("Invalid file path\n");
-        }
+        );
     }
 
     public function queryWhereColumnEqualsValue(string $columnName, mixed $value): array
     {
-        $columnIndex = $this->getColumnIndex($columnName);
-        if (is_string($value)) {
-            $value = strtolower($value);
-        }
-        $arrayOfMatches = array_filter($this->fileAsArray, function ($row) use ($columnIndex, $value) {
-            $entryInRelevantColumn = $row[$columnIndex];
-            if (is_string($entryInRelevantColumn)) {
-                $entryInRelevantColumn = strtolower($entryInRelevantColumn);
+        $arrayOfMatches = array_filter(
+            $this->fileAsArray,
+            function ($row) use ($columnName, $value) {
+                $entryInQueriedColumn = $row[ucfirst($columnName)];
+                return strcasecmp($entryInQueriedColumn, $value) === 0;
             }
-            return $entryInRelevantColumn === $value;
-        });
-        return $arrayOfMatches;
-    }
-
-    public function getColumnIndex(string $columnName): string
-    {
-        return array_search($columnName, $this->columnNames);
-    }
-
-    public function getEntriesByColumn(string $columnName, bool $strToLower = false): array
-    {
-        $columnIndex = $this->getColumnIndex($columnName);
-        $fileArrayExTitleRow = $this->fileAsArray;
-        array_shift($fileArrayExTitleRow);
-        $arrayOfColumnEntries = array_map(
-            function ($row) use ($columnIndex, $strToLower) {
-                return $strToLower ? strToLower($row[$columnIndex]) : $row[$columnIndex];
-            },
-            $fileArrayExTitleRow
         );
-        return array_unique($arrayOfColumnEntries);
+        return array_values($arrayOfMatches);
+    }
+
+    protected function getExistingEntriesByColumn(string $columnName, bool $strToLower = false): array
+    {
+        $arrayOfColumnEntries = array_map(
+            function ($row) use ($columnName, $strToLower) {
+                $entry = $row[ucfirst($columnName)];
+                return $strToLower ? strToLower($entry) : $entry;
+            },
+            $this->fileAsArray
+        );
+        return $arrayOfColumnEntries;
+    }
+
+    public function getEntryCountByColumn(string $columnName, bool $caseInsensitive = false): array
+    {
+        $columnEntries = $this->getExistingEntriesByColumn($columnName, $caseInsensitive);
+        return array_count_values($columnEntries);
     }
 }

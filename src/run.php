@@ -1,4 +1,5 @@
 <?php
+
 require 'classes/CsvParser.php';
 require 'functions/userInput.php';
 require 'functions/userResponses.php';
@@ -15,8 +16,8 @@ $validOptionInput = userOptionRequest();
 if ($validOptionInput === "q") {
     $countryCode = getUserCountryCode();
     $matchingRows = $servicesParser->queryWhereColumnEqualsValue("Country", $countryCode);
-    issueQueryResponse($countryCode, $matchingRows, $servicesParser->columnNames);
+    issueQueryResponse($countryCode, $matchingRows);
 } else if ($validOptionInput === "s") {
-    $existingCountryCodes = $servicesParser->getEntriesByColumn("Country", true);
-    issueSummaryResponse($servicesParser, $existingCountryCodes, "Country");
+    $existingCountryCodeCounts = $servicesParser->getEntryCountByColumn("Country", true);
+    issueSummaryResponse($existingCountryCodeCounts, "Country");
 }
